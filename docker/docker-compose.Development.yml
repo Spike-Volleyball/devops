@@ -300,6 +300,11 @@ services:
             - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-us-east-1}
             - AWS_REGION=${AWS_REGION:-us-east-1}
             - DOTNET_RUNNING_IN_CONTAINER=true
+            # Local only. The admin endpoints are how an e2e test verifies a club, and
+            # every messaging rule needs one. nginx.Development.conf has no admin deny
+            # rule and the gateway is bound to localhost; the staging and production
+            # compose files must NOT get this.
+            - AdminConsole__ApiKey=${ADMIN_CONSOLE_API_KEY:-local-dev-only-not-a-secret}
         ports:
             - "5021:5021" # gRPC
             - "5020:5020" # HTTP
