@@ -109,6 +109,10 @@ services:
         container_name: volleyer-auth-dev
         environment:
             - ASPNETCORE_ENVIRONMENT=Development
+            # The web app is also served from the Cloudflare tunnel, and a browser calling
+            # dev-api from that origin is cross-origin — without this the request is blocked
+            # and the page fails in a way that looks like a broken endpoint.
+            - Cors__AllowedOrigins__2=https://dev.volleyspike.app
             # ASPNETCORE_URLS intentionally unset so Kestrel binds the endpoints from
             # appsettings.json (HTTP on 5005, gRPC HTTP/2 on 5006).
             - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
@@ -158,6 +162,8 @@ services:
             - /app/shared/Shared.Microservices/obj
             - /app/shared/Shared.Services/bin
             - /app/shared/Shared.Services/obj
+            - /app/shared/Shared.Guardian/bin
+            - /app/shared/Shared.Guardian/obj
             - /app/shared/Shared.Testing/bin
             - /app/shared/Shared.Testing/obj
         networks:
@@ -181,6 +187,10 @@ services:
             - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-us-east-1}
             - AWS_REGION=${AWS_REGION:-us-east-1}
             - DOTNET_RUNNING_IN_CONTAINER=true
+            # The web app is also served from the Cloudflare tunnel, and a browser calling
+            # dev-api from that origin is cross-origin — without this the request is blocked
+            # and the page fails in a way that looks like a broken endpoint.
+            - Cors__AllowedOrigins__2=https://dev.volleyspike.app
         ports:
             - "5010:5010" # HTTP
             - "5011:5011" # gRPC
@@ -215,6 +225,8 @@ services:
             - /app/shared/Shared.Microservices/obj
             - /app/shared/Shared.Services/bin
             - /app/shared/Shared.Services/obj
+            - /app/shared/Shared.Guardian/bin
+            - /app/shared/Shared.Guardian/obj
             - /app/shared/Shared.Testing/bin
             - /app/shared/Shared.Testing/obj
         networks:
@@ -237,6 +249,10 @@ services:
             - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-us-east-1}
             - AWS_REGION=${AWS_REGION:-us-east-1}
             - DOTNET_RUNNING_IN_CONTAINER=true
+            # The web app is also served from the Cloudflare tunnel, and a browser calling
+            # dev-api from that origin is cross-origin — without this the request is blocked
+            # and the page fails in a way that looks like a broken endpoint.
+            - Cors__AllowedOrigins__2=https://dev.volleyspike.app
         ports:
             - "5170:5170" # HTTP
             - "5171:5171" # gRPC
@@ -273,6 +289,8 @@ services:
             - /app/shared/Shared.Microservices/obj
             - /app/shared/Shared.Services/bin
             - /app/shared/Shared.Services/obj
+            - /app/shared/Shared.Guardian/bin
+            - /app/shared/Shared.Guardian/obj
             - /app/shared/Shared.Testing/bin
             - /app/shared/Shared.Testing/obj
         networks:
@@ -294,6 +312,15 @@ services:
             - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-us-east-1}
             - AWS_REGION=${AWS_REGION:-us-east-1}
             - DOTNET_RUNNING_IN_CONTAINER=true
+            # The web app is also served from the Cloudflare tunnel, and a browser calling
+            # dev-api from that origin is cross-origin — without this the request is blocked
+            # and the page fails in a way that looks like a broken endpoint.
+            - Cors__AllowedOrigins__2=https://dev.volleyspike.app
+            # Local only. The admin endpoints are how an e2e test verifies a club, and
+            # every messaging rule needs one. nginx.Development.conf has no admin deny
+            # rule and the gateway is bound to localhost; the staging and production
+            # compose files must NOT get this.
+            - AdminConsole__ApiKey=${ADMIN_CONSOLE_API_KEY:-local-dev-only-not-a-secret}
         ports:
             - "5021:5021" # gRPC
             - "5020:5020" # HTTP
@@ -328,6 +355,8 @@ services:
             - /app/shared/Shared.Microservices/obj
             - /app/shared/Shared.Services/bin
             - /app/shared/Shared.Services/obj
+            - /app/shared/Shared.Guardian/bin
+            - /app/shared/Shared.Guardian/obj
             - /app/shared/Shared.Testing/bin
             - /app/shared/Shared.Testing/obj
         networks:
@@ -352,6 +381,10 @@ services:
             - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-us-east-1}
             - AWS_REGION=${AWS_REGION:-us-east-1}
             - DOTNET_RUNNING_IN_CONTAINER=true
+            # The web app is also served from the Cloudflare tunnel, and a browser calling
+            # dev-api from that origin is cross-origin — without this the request is blocked
+            # and the page fails in a way that looks like a broken endpoint.
+            - Cors__AllowedOrigins__1=https://dev.volleyspike.app
         ports:
             - "5180:5180" # HTTP
             - "10003:10003" # Debugger
@@ -387,6 +420,8 @@ services:
             - /app/shared/Shared.Microservices/obj
             - /app/shared/Shared.Services/bin
             - /app/shared/Shared.Services/obj
+            - /app/shared/Shared.Guardian/bin
+            - /app/shared/Shared.Guardian/obj
             - /app/shared/Shared.Testing/bin
             - /app/shared/Shared.Testing/obj
         networks:
@@ -413,6 +448,14 @@ services:
             - EmailSettings__SmtpHost=volleyer-mailpit
             - EmailSettings__SmtpPort=1025
             - EmailSettings__SmtpUseTls=false
+            # The web app is also served from the Cloudflare tunnel, and a browser calling
+            # dev-api from that origin is cross-origin — without this the request is blocked
+            # and the page fails in a way that looks like a broken endpoint.
+            - Cors__AllowedOrigins__2=https://dev.volleyspike.app
+            # Every emailed link this service builds — family and club invitations — has to be
+            # a host a phone can open. appsettings.Development.json says localhost:3000, which
+            # only the workstation's own browser can reach. Same override auth-service carries.
+            - Urls__Web=https://dev.volleyspike.app
         ports:
             - "5030:5030" # HTTP
             - "5031:5031" # gRPC
@@ -447,6 +490,8 @@ services:
             - /app/shared/Shared.Microservices/obj
             - /app/shared/Shared.Services/bin
             - /app/shared/Shared.Services/obj
+            - /app/shared/Shared.Guardian/bin
+            - /app/shared/Shared.Guardian/obj
             - /app/shared/Shared.Testing/bin
             - /app/shared/Shared.Testing/obj
         networks:
@@ -473,6 +518,10 @@ services:
             - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-us-east-1}
             - AWS_REGION=${AWS_REGION:-us-east-1}
             - DOTNET_RUNNING_IN_CONTAINER=true
+            # The web app is also served from the Cloudflare tunnel, and a browser calling
+            # dev-api from that origin is cross-origin — without this the request is blocked
+            # and the page fails in a way that looks like a broken endpoint.
+            - Cors__AllowedOrigins__2=https://dev.volleyspike.app
         ports:
             - "5040:5040" # HTTP
             - "10007:10007" # Debugger
@@ -506,6 +555,8 @@ services:
             - /app/shared/Shared.Microservices/obj
             - /app/shared/Shared.Services/bin
             - /app/shared/Shared.Services/obj
+            - /app/shared/Shared.Guardian/bin
+            - /app/shared/Shared.Guardian/obj
             - /app/shared/Shared.Testing/bin
             - /app/shared/Shared.Testing/obj
         networks:
@@ -531,6 +582,10 @@ services:
             - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-us-east-1}
             - AWS_REGION=${AWS_REGION:-us-east-1}
             - DOTNET_RUNNING_IN_CONTAINER=true
+            # The web app is also served from the Cloudflare tunnel, and a browser calling
+            # dev-api from that origin is cross-origin — without this the request is blocked
+            # and the page fails in a way that looks like a broken endpoint.
+            - Cors__AllowedOrigins__2=https://dev.volleyspike.app
         ports:
             - "5060:5060" # HTTP
             - "5061:5061" # gRPC
@@ -565,6 +620,8 @@ services:
             - /app/shared/Shared.Microservices/obj
             - /app/shared/Shared.Services/bin
             - /app/shared/Shared.Services/obj
+            - /app/shared/Shared.Guardian/bin
+            - /app/shared/Shared.Guardian/obj
             - /app/shared/Shared.Testing/bin
             - /app/shared/Shared.Testing/obj
         networks:
@@ -588,6 +645,10 @@ services:
             - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-us-east-1}
             - AWS_REGION=${AWS_REGION:-us-east-1}
             - DOTNET_RUNNING_IN_CONTAINER=true
+            # The web app is also served from the Cloudflare tunnel, and a browser calling
+            # dev-api from that origin is cross-origin — without this the request is blocked
+            # and the page fails in a way that looks like a broken endpoint.
+            - Cors__AllowedOrigins__2=https://dev.volleyspike.app
         ports:
             - "5051:5051" # gRPC
             - "5050:5050" # HTTP
@@ -622,6 +683,8 @@ services:
             - /app/shared/Shared.Microservices/obj
             - /app/shared/Shared.Services/bin
             - /app/shared/Shared.Services/obj
+            - /app/shared/Shared.Guardian/bin
+            - /app/shared/Shared.Guardian/obj
             - /app/shared/Shared.Testing/bin
             - /app/shared/Shared.Testing/obj
         networks:

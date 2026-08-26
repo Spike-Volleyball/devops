@@ -141,6 +141,20 @@
         }
     }
 
+    # The admin console's endpoints, on every service that has them.
+    #
+    # The console reaches the services directly over the compose network, never through
+    # this gateway, so nothing legitimate arrives here. The services check the console's
+    # shared secret themselves and that is the real control; this is a second layer.
+    #
+    # Case-insensitive: ASP.NET routes are, so /auth/v1/Admin/ reaches the same endpoint
+    # and a case-sensitive rule would be walked straight around. Placed above the service
+    # routes because `handle` blocks are mutually exclusive and matched in file order.
+    @admin_endpoints path_regexp (?i)^/(auth|clubs)/v[0-9]+/admin/
+    handle @admin_endpoints {
+        respond 403
+    }
+
     # REST API routes
     handle_path /auth/* {
         reverse_proxy auth-service:5005

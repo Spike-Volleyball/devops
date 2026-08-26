@@ -134,6 +134,36 @@ services:
       rabbitmq:
         condition: service_healthy
 
+  # Internal admin plane. Never published and never behind Caddy: the only thing that can
+  # reach it is cloudflared, and the only thing that reaches cloudflared is Cloudflare
+  # Access. Putting an admin vhost on the public :443 surface would defeat the point
+  # (SPI-6058). The "admin" profile keeps it out of every environment that has not opted in.
+  admin-console:
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-bielov-team-track}/admin-console:${ADMIN_CONSOLE_TAG:-main}
+    profiles: ["admin"]
+    networks:
+      - volleyer-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # 403 is the pass. There is deliberately no unauthenticated health path, so a refusal
+    # is the only honest liveness signal: it proves the server is up AND the gate is shut.
+    # A 200 here would mean the gate had failed open, which must not read as healthy.
+    # Exec form with node: the image is distroless and has no shell, curl or wget.
+    healthcheck:
+      test: ["CMD", "/nodejs/bin/node", "-e", "fetch('http://127.0.0.1:3000/').then(r => process.exit(r.status === 403 ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  cloudflared:
+    image: cloudflare/cloudflared:2026.8.2
+    profiles: ["admin"]
+    command: tunnel --no-autoupdate run
+    networks:
+      - volleyer-network
+
   frontend:
     image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-bielov-team-track}/volleyer-frontend:${FRONTEND_TAG:-main}
     profiles: ["development"]

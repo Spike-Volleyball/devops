@@ -345,6 +345,42 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  # No `ports` on purpose: the console is reachable only through cloudflared, which
+  # reaches it over the compose network. Publishing anything here would put the admin
+  # plane on the box's public surface, which is the one thing the design forbids.
+  admin-console:
+    restart: unless-stopped
+    env_file: [.env.admin-console]
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # TUNNEL_TOKEN comes from .env.cloudflared, which is created on the box and tracked
+  # nowhere. The token is the tunnel's credential: anything holding it can serve this
+  # hostname (admin-staging.volleyspike.app).
+  cloudflared:
+    restart: unless-stopped
+    env_file: [.env.cloudflared]
+    depends_on:
+      - admin-console
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
 volumes:
   caddy_data:
   caddy_config:
