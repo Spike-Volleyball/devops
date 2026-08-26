@@ -35,7 +35,7 @@ jobs:
       - name: Checkout E2E tests
         uses: actions/checkout@v4
         with:
-          repository: Bielov-Team-Track/Bielov-Team-Track
+          repository: Spike-Volleyball/root
           sparse-checkout: tests/e2e
           sparse-checkout-cone-mode: true
 
