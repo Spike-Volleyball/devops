@@ -138,7 +138,7 @@ jobs:
 
       - name: Run pre-migration backup (production only)
         if: inputs.environment == 'production' && inputs.has-migrations
-        uses: appleboy/ssh-action@7eaf76671a0d7eec5d98ee897acda4f968735a17 # v1.2.0
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
         env:
           DEPLOY_PATH: ${{ inputs.deploy-path }}
           SERVICE_NAME: ${{ inputs.service-name }}
@@ -187,7 +187,7 @@ jobs:
 
       - name: Run migration bundle
         if: inputs.has-migrations
-        uses: appleboy/ssh-action@7eaf76671a0d7eec5d98ee897acda4f968735a17 # v1.2.0
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
         env:
           DEPLOY_PATH: ${{ inputs.deploy-path }}
           SERVICE_NAME: ${{ inputs.service-name }}
@@ -284,7 +284,7 @@ jobs:
 
       - name: Deploy service (pull, restart, health check, update tags)
         id: deploy
-        uses: appleboy/ssh-action@7eaf76671a0d7eec5d98ee897acda4f968735a17 # v1.2.0
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1.2.5
         env:
           TAG: ${{ github.sha }}
           SERVICE_NAME: ${{ inputs.service-name }}
