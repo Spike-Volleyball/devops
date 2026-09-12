@@ -87,6 +87,12 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  # Service caps (2026-09-10): the box is 8 vCPU / 24 GB and idles below 10%, yet every
+  # service sat at 1 CPU and hit CFS throttling on each traffic burst (roster screens fan
+  # out into 3-hop gRPC chains; clubs-service alone accrued 350 s of throttled time in a
+  # week). 2 CPUs per service keeps any single runaway to a quarter of the host while a
+  # 4-service chain can still burst to the whole box. 768M gives the .NET GC (hard limit =
+  # 75% of the cap) room above the 230-315M RSS peaks so it stops compacting under bursts.
   auth-service:
     restart: unless-stopped
     ports:
@@ -97,8 +103,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1'
-          memory: 512M
+          cpus: '2'
+          memory: 768M
     logging:
       driver: json-file
       options:
@@ -115,8 +121,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1'
-          memory: 512M
+          cpus: '2'
+          memory: 768M
     logging:
       driver: json-file
       options:
@@ -133,8 +139,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1'
-          memory: 384M
+          cpus: '2'
+          memory: 768M
     logging:
       driver: json-file
       options:
@@ -151,8 +157,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1'
-          memory: 384M
+          cpus: '2'
+          memory: 768M
     logging:
       driver: json-file
       options:
@@ -169,8 +175,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1'
-          memory: 512M
+          cpus: '2'
+          memory: 768M
     logging:
       driver: json-file
       options:
@@ -187,8 +193,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1'
-          memory: 384M
+          cpus: '2'
+          memory: 768M
     logging:
       driver: json-file
       options:
@@ -205,8 +211,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1'
-          memory: 384M
+          cpus: '2'
+          memory: 768M
     logging:
       driver: json-file
       options:
@@ -223,8 +229,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1'
-          memory: 384M
+          cpus: '2'
+          memory: 768M
     logging:
       driver: json-file
       options:
@@ -241,8 +247,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1'
-          memory: 384M
+          cpus: '2'
+          memory: 768M
     logging:
       driver: json-file
       options:
@@ -280,11 +286,14 @@ services:
       - "127.0.0.1:3000:3000"
     environment:
       OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
+      # The image pins V8 at 300M for the old 512M cap; 512M under a 1G cap leaves ~350M for
+      # native memory and page cache (the old cap was hit 1,683 times, evicting code pages).
+      NODE_OPTIONS: "--max-old-space-size=512"
     deploy:
       resources:
         limits:
-          cpus: '1'
-          memory: 512M
+          cpus: '2'
+          memory: 1G
     logging:
       driver: json-file
       options:
