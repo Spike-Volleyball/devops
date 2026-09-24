@@ -13,20 +13,18 @@ on:
         type: boolean
         default: false
 
+# The checks, the unit tests and the image run side by side. On one runner the unit tests alone had
+# grown to 30-45 minutes, so they are split across several. The image is pushed under its commit's
+# SHA only, which is what a deploy pulls; the branch tag, which a server falls back to when started
+# without its .env.tags, goes on in `result`, once every check and test has passed.
 jobs:
-  build:
-    name: Build Frontend
+  checks:
+    name: Checks
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment || null }}
     permissions:
       contents: read
-      packages: write
 
     steps:
-      - name: Record build start time
-        id: timer
-        run: echo "start=$(date +%s)" >> "$GITHUB_OUTPUT"
-
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
@@ -80,22 +78,55 @@ jobs:
       - name: Run ESLint
         run: npm run lint
 
-      - name: Run unit tests
-        run: npm test
-
       - name: TypeScript type check
         run: npx tsc --noEmit
 
+  unit-tests:
+    name: Unit tests (${{ matrix.shard }}/${{ strategy.job-total }})
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      matrix:
+        shard: [1, 2, 3, 4]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Run unit tests
+        run: npm test -- --shard=${{ matrix.shard }}/${{ strategy.job-total }}
+
+  image:
+    name: Docker image
+    if: inputs.push-docker-image
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment || null }}
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
       - name: Set lowercase owner
-        if: inputs.push-docker-image
         run: echo "OWNER_LC=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_ENV"
 
       - name: Set up Docker Buildx
-        if: inputs.push-docker-image
         uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
 
       - name: Login to GHCR
-        if: inputs.push-docker-image
         uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
         with:
           registry: ghcr.io
@@ -103,7 +134,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Report docker started
-        if: inputs.push-docker-image && vars.DEPLOY_DASHBOARD_URL != ''
+        if: vars.DEPLOY_DASHBOARD_URL != ''
         continue-on-error: true
         env:
           DASHBOARD_URL: ${{ vars.DEPLOY_DASHBOARD_URL }}
@@ -133,7 +164,6 @@ jobs:
 
       - name: Build and push Docker image
         id: docker-push
-        if: inputs.push-docker-image
         uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
         with:
           context: .
@@ -142,7 +172,6 @@ jobs:
           platforms: linux/amd64
           tags: |
             ghcr.io/${{ env.OWNER_LC }}/volleyer-frontend:${{ github.sha }}
-            ghcr.io/${{ env.OWNER_LC }}/volleyer-frontend:${{ github.ref_name }}
           build-args: |
             NEXT_PUBLIC_API_URL=${{ vars.NEXT_PUBLIC_API_URL }}
             NEXT_PUBLIC_WEBSOCKET_URL=${{ vars.NEXT_PUBLIC_WEBSOCKET_URL }}
@@ -161,50 +190,8 @@ jobs:
           cache-from: type=gha,scope=frontend-${{ github.ref_name }}
           cache-to: type=gha,mode=max,scope=frontend-${{ github.ref_name }}
 
-      - name: Calculate build duration
-        if: always()
-        id: duration
-        env:
-          START: ${{ steps.timer.outputs.start }}
-        run: |
-          END=$(date +%s)
-          DIFF=$((END - START))
-          MINS=$((DIFF / 60))
-          SECS=$((DIFF % 60))
-          echo "duration=${MINS}m ${SECS}s" >> "$GITHUB_OUTPUT"
-
-      - name: Report build result
-        if: always() && vars.DEPLOY_DASHBOARD_URL != ''
-        continue-on-error: true
-        env:
-          DASHBOARD_URL: ${{ vars.DEPLOY_DASHBOARD_URL }}
-          API_KEY: ${{ secrets.DEPLOY_DASHBOARD_API_KEY }}
-          RUN_ID: ${{ github.run_id }}
-          ENVIRONMENT: ${{ inputs.environment }}
-          GIT_SHA: ${{ github.sha }}
-          GIT_BRANCH: ${{ github.ref_name }}
-          GIT_MESSAGE: ${{ github.event.head_commit.message }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          BUILD_STATUS: ${{ job.status == 'success' && 'success' || 'failure' }}
-        run: |
-          curl -fsS --max-time 10 -X POST "$DASHBOARD_URL/api/events" \
-            -H "Authorization: Bearer $API_KEY" \
-            -H "Content-Type: application/json" \
-            -d "$(jq -n \
-              --arg run_id "$RUN_ID" \
-              --arg service "frontend" \
-              --arg environment "$ENVIRONMENT" \
-              --arg stage "build" \
-              --arg status "$BUILD_STATUS" \
-              --arg timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-              --arg git_sha "$GIT_SHA" \
-              --arg git_branch "$GIT_BRANCH" \
-              --arg git_message "$GIT_MESSAGE" \
-              --arg github_run_url "$RUN_URL" \
-              '{run_id:$run_id,service:$service,environment:$environment,stage:$stage,status:$status,timestamp:$timestamp,git_sha:$git_sha,git_branch:$git_branch,git_message:$git_message,details:{github_run_url:$github_run_url}}')"
-
       - name: Report docker result
-        if: inputs.push-docker-image && always() && vars.DEPLOY_DASHBOARD_URL != ''
+        if: always() && vars.DEPLOY_DASHBOARD_URL != ''
         continue-on-error: true
         env:
           DASHBOARD_URL: ${{ vars.DEPLOY_DASHBOARD_URL }}
@@ -226,6 +213,81 @@ jobs:
               --arg environment "$ENVIRONMENT" \
               --arg stage "docker" \
               --arg status "$DOCKER_STATUS" \
+              --arg timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+              --arg git_sha "$GIT_SHA" \
+              --arg git_branch "$GIT_BRANCH" \
+              --arg git_message "$GIT_MESSAGE" \
+              --arg github_run_url "$RUN_URL" \
+              '{run_id:$run_id,service:$service,environment:$environment,stage:$stage,status:$status,timestamp:$timestamp,git_sha:$git_sha,git_branch:$git_branch,git_message:$git_message,details:{github_run_url:$github_run_url}}')"
+
+  result:
+    name: Result
+    needs: [checks, unit-tests, image]
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      # A skipped image (no push asked for) passes; a failed or cancelled job anywhere fails the build.
+      - name: Decide the build's outcome
+        id: outcome
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          case " $RESULTS " in
+            *" failure "*|*" cancelled "*) echo "status=failure" >> "$GITHUB_OUTPUT" ;;
+            *) echo "status=success" >> "$GITHUB_OUTPUT" ;;
+          esac
+
+      - name: Set lowercase owner
+        if: steps.outcome.outputs.status == 'success' && inputs.push-docker-image
+        run: echo "OWNER_LC=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_ENV"
+
+      - name: Set up Docker Buildx
+        if: steps.outcome.outputs.status == 'success' && inputs.push-docker-image
+        uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2 # v3.10.0
+
+      - name: Login to GHCR
+        if: steps.outcome.outputs.status == 'success' && inputs.push-docker-image
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tag the tested image for its branch
+        id: branch-tag
+        if: steps.outcome.outputs.status == 'success' && inputs.push-docker-image
+        env:
+          IMAGE: ghcr.io/${{ env.OWNER_LC }}/volleyer-frontend
+          BRANCH: ${{ github.ref_name }}
+        run: docker buildx imagetools create --tag "$IMAGE:$BRANCH" "$IMAGE:$GITHUB_SHA"
+
+      - name: Report build result
+        if: always() && vars.DEPLOY_DASHBOARD_URL != ''
+        continue-on-error: true
+        env:
+          DASHBOARD_URL: ${{ vars.DEPLOY_DASHBOARD_URL }}
+          API_KEY: ${{ secrets.DEPLOY_DASHBOARD_API_KEY }}
+          RUN_ID: ${{ github.run_id }}
+          ENVIRONMENT: ${{ inputs.environment }}
+          GIT_SHA: ${{ github.sha }}
+          GIT_BRANCH: ${{ github.ref_name }}
+          GIT_MESSAGE: ${{ github.event.head_commit.message }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          BUILD_STATUS: ${{ steps.outcome.outputs.status == 'success' && steps.branch-tag.outcome != 'failure' && 'success' || 'failure' }}
+        run: |
+          curl -fsS --max-time 10 -X POST "$DASHBOARD_URL/api/events" \
+            -H "Authorization: Bearer $API_KEY" \
+            -H "Content-Type: application/json" \
+            -d "$(jq -n \
+              --arg run_id "$RUN_ID" \
+              --arg service "frontend" \
+              --arg environment "$ENVIRONMENT" \
+              --arg stage "build" \
+              --arg status "$BUILD_STATUS" \
               --arg timestamp "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
               --arg git_sha "$GIT_SHA" \
               --arg git_branch "$GIT_BRANCH" \
