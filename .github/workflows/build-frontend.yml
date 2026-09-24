@@ -104,8 +104,10 @@ jobs:
       - name: Install dependencies
         run: npm ci --ignore-scripts
 
+      # Vitest's default is one worker fewer than the CPUs, which on this 2-vCPU runner is one
+      # worker running the files one at a time while the main process mostly waits.
       - name: Run unit tests
-        run: npm test -- --shard=${{ matrix.shard }}/${{ strategy.job-total }}
+        run: npm test -- --shard=${{ matrix.shard }}/${{ strategy.job-total }} --maxWorkers=2
 
   image:
     name: Docker image
