@@ -296,6 +296,11 @@ services:
       # The image pins V8 at 300M for the old 512M cap; 512M under a 1G cap leaves ~350M for
       # native memory and page cache (the old cap was hit 1,683 times, evicting code pages).
       NODE_OPTIONS: "--max-old-space-size=512"
+    volumes:
+      # The image optimiser's cache outlives a deploy, which used to empty it. The image has to
+      # create .next/cache as the server's user (the frontend's Dockerfile) before this volume first
+      # mounts: a fresh volume takes that directory's owner, and without it comes up root-owned.
+      - frontend_cache:/app/.next/cache
     deploy:
       resources:
         limits:
@@ -347,3 +352,4 @@ volumes:
   caddy_data:
   caddy_config:
   caddy_logs:
+  frontend_cache:
