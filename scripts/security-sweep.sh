@@ -17,7 +17,19 @@ add_finding() {
 $2"
 }
 
-sql() { $PG -d "$1" -c "$2" 2>/dev/null; }
+# A failing check must say so: this used to discard psql's stderr, and check 3 then failed on
+# every hourly run for weeks (aggregate inside GROUP BY 1) without anyone knowing. Errors are
+# collected in a file because sql() runs inside $(...) subshells, and reported as a finding.
+CHECK_ERRORS=$(mktemp)
+trap 'rm -f "$CHECK_ERRORS"' EXIT
+sql() {
+    local out
+    if ! out=$($PG -d "$1" -c "$2" 2>&1); then
+        printf 'check on %s failed: %s\n' "$1" "$(printf '%s' "$out" | head -2)" >> "$CHECK_ERRORS"
+        return 0
+    fi
+    printf '%s' "$out"
+}
 
 # 1. Signup burst: more than 5 accounts inside one hour
 burst=$(sql auth "SELECT count(*) FROM \"Users\" WHERE \"CreatedAt\" > now() - interval '1 hour'")
@@ -32,7 +44,7 @@ patt=$(sql auth "SELECT \"Email\" || ' created=' || \"CreatedAt\"::text FROM \"U
 
 # 3. Conversation fan-out: someone opened 4+ new direct/group chats in 24h
 #    (the in-app cap is 5/day for young accounts — this fires one step earlier)
-fanout=$(sql messages "SELECT coalesce(up.\"Email\", c.\"CreatedBy\"::text) || ': ' || count(*) || ' new chats' FROM \"Chats\" c LEFT JOIN \"UserProfiles\" up ON up.\"Id\" = c.\"CreatedBy\" WHERE c.\"CreatedAt\" > now() - interval '24 hours' AND c.\"Type\" IN (0,1) AND c.\"CreatedBy\" IS NOT NULL GROUP BY 1 HAVING count(*) >= 4")
+fanout=$(sql messages "SELECT coalesce(up.\"Email\", c.\"CreatedBy\"::text) || ': ' || count(*) || ' new chats' FROM \"Chats\" c LEFT JOIN \"UserProfiles\" up ON up.\"Id\" = c.\"CreatedBy\" WHERE c.\"CreatedAt\" > now() - interval '24 hours' AND c.\"Type\" IN (0,1) AND c.\"CreatedBy\" IS NOT NULL GROUP BY coalesce(up.\"Email\", c.\"CreatedBy\"::text) HAVING count(*) >= 4")
 [ -n "$fanout" ] && add_finding "CHAT FAN-OUT (24h)" "$fanout"
 
 # 4. Young account (<48h) sending a message spree (>30 msgs in 24h)
@@ -73,6 +85,8 @@ for ip, n in hits.most_common(3):
 ')
     [ -n "$hot" ] && add_finding "EDGE: IP HAMMERING /auth/* (1h)" "$hot"
 fi
+
+[ -s "$CHECK_ERRORS" ] && add_finding "SWEEP CHECKS FAILED — these checks saw nothing this run" "$(cat "$CHECK_ERRORS")"
 
 if [ "${1:-}" = "--test" ]; then
     add_finding "TEST" "security-sweep --test invoked; the alert pipe works."
