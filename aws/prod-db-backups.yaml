@@ -1,0 +1,99 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  Production database backups (SPI-5748, provisioning/BACKUPS.md). A bucket whose archives
+  nothing can delete before their retention ends (Object Lock, compliance mode), and the IAM
+  user the prod box writes and verifies them with.
+
+Resources:
+  BackupBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Sub "spike-prod-db-backups-${AWS::AccountId}"
+      VersioningConfiguration:
+        Status: Enabled
+      ObjectLockEnabled: true
+      ObjectLockConfiguration:
+        ObjectLockEnabled: Enabled
+        # Covers every hourly archive. The backup script locks daily/ archives for 35 days
+        # explicitly on upload.
+        Rule:
+          DefaultRetention:
+            Mode: COMPLIANCE
+            Days: 2
+      LifecycleConfiguration:
+        Rules:
+          - Id: hourly-archives
+            Status: Enabled
+            Prefix: hourly/
+            ExpirationInDays: 2
+            NoncurrentVersionExpiration:
+              NoncurrentDays: 1
+          - Id: daily-archives
+            Status: Enabled
+            Prefix: daily/
+            ExpirationInDays: 35
+            NoncurrentVersionExpiration:
+              NoncurrentDays: 1
+          - Id: clean-up
+            Status: Enabled
+            ExpiredObjectDeleteMarker: true
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 1
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
+  BackupBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref BackupBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: DenyInsecureTransport
+            Effect: Deny
+            Principal: "*"
+            Action: "s3:*"
+            Resource:
+              - !GetAtt BackupBucket.Arn
+              - !Sub "${BackupBucket.Arn}/*"
+            Condition:
+              Bool:
+                aws:SecureTransport: "false"
+
+  # Write and read, never delete: a stolen key can add archives but not remove any.
+  BackupUser:
+    Type: AWS::IAM::User
+    Properties:
+      UserName: spike-prod-db-backup
+      Policies:
+        - PolicyName: write-and-verify-backups
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:PutObjectRetention
+                  - s3:GetObject
+                Resource: !Sub "${BackupBucket.Arn}/*"
+              - Effect: Allow
+                Action: s3:ListBucket
+                Resource: !GetAtt BackupBucket.Arn
+
+Outputs:
+  BucketName:
+    Value: !Ref BackupBucket
+  UserName:
+    Value: !Ref BackupUser
