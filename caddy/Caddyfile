@@ -1,46 +1,78 @@
+# Staging Caddyfile — Cloudflare proxy (orange cloud) handles TLS, Caddy serves HTTP only
 {
     auto_https off
     servers {
-        # Cloudflare IP ranges - INITIAL BOOTSTRAP, last verified: 2026-02-18
-        # Source: https://www.cloudflare.com/ips/
-        # IMPORTANT: These hardcoded IPs must be kept current. Set up periodic
-        # synchronization via cron job (fetch from cloudflare.com/ips-v4 + ips-v6
-        # and reload Caddy), or use a custom Caddy build with the caddy-cloudflare-ip
-        # plugin for automatic updates: https://github.com/WeidiDeng/caddy-cloudflare-ip
-        # See Task 16 checklist for setup instructions.
+        # Cloudflare IP ranges — without trusted_proxies, client_ip_headers is
+        # ignored and {client_ip} is the CF edge address, not the visitor.
+        # Source: https://www.cloudflare.com/ips/ (synced 2026-02-18)
         trusted_proxies static 173.245.48.0/20 103.21.244.0/22 103.22.200.0/22 103.31.4.0/22 141.101.64.0/18 108.162.192.0/18 190.93.240.0/20 188.114.96.0/20 197.234.240.0/22 198.41.128.0/17 162.158.0.0/15 104.16.0.0/13 104.24.0.0/14 172.64.0.0/13 131.0.72.0/22 2400:cb00::/32 2606:4700::/32 2803:f800::/32 2405:b500::/32 2405:8100::/32 2a06:98c0::/29 2c0f:f248::/32
         trusted_proxies_strict
         client_ip_headers Cf-Connecting-Ip
+        timeouts {
+            read_header 10s
+        }
     }
 }
 
-# The API's routing, shared by the public site and the internal one below it: security headers,
-# the canonical client IP, the SignalR hubs, the admin-console deny and the per-service routes.
-(api_routes) {
+:80 {
     request_body {
         max_size 10MB
     }
 
     header {
         X-Content-Type-Options nosniff
-        X-Frame-Options DENY
+        X-Robots-Tag "noindex, nofollow"
         X-XSS-Protection "0"
         Referrer-Policy strict-origin-when-cross-origin
         Permissions-Policy "camera=(), microphone=(), geolocation=()"
         -Server
     }
 
+    # A club's registration form and its sessions card may be framed by the websites the club
+    # approved. The web sends those pages' frame-ancestors itself, per request, so the gateway's
+    # blanket DENY stays off them.
+    @not_club_embed not path_regexp ^/embed/clubs/[^/]+/(register|sessions)$
+    header @not_club_embed X-Frame-Options DENY
+
     # Canonical client IP for the services' per-IP rate limiters. {client_ip} is
     # trusted-proxy-aware and this overwrites anything a client tries to smuggle in.
     request_header X-Real-Client-Ip {client_ip}
 
-    # SignalR WebSocket hubs (more specific paths, matched before generic service routes)
-    # Using `handle` + `uri strip_prefix` instead of `handle_path` to strip only the
-    # service prefix while preserving `/hubs/...` in the forwarded path.
-    #
-    # Currently active SignalR hubs: events, messages, notifications
-    # Pre-provisioned for future use: profiles, social, payments
-    handle /events/hubs/* {
+    log {
+        output file /var/log/caddy/access-api.log {
+            roll_size 50MiB
+            roll_keep 5
+        }
+        format json
+    }
+
+    # OpenTelemetry: browser trace export -> OTel Collector
+    @otel_allowed {
+        method POST OPTIONS
+        path /otel/*
+    }
+    handle @otel_allowed {
+        request_body {
+            max_size 256KB
+        }
+        uri strip_prefix /otel
+        reverse_proxy otel-collector:4318
+    }
+    handle /otel/* {
+        respond 405
+    }
+
+    # API routes — only match on API hostnames, not the frontend hostname
+    @api_host {
+        host api.volleyspike.app staging-api.volleyspike.app
+    }
+
+    # SignalR WebSocket hubs (API host only)
+    @events_hubs {
+        host api.volleyspike.app staging-api.volleyspike.app
+        path /events/hubs/*
+    }
+    handle @events_hubs {
         uri strip_prefix /events
         reverse_proxy events-service:5010 {
             flush_interval -1
@@ -50,7 +82,11 @@
             }
         }
     }
-    handle /messages/hubs/* {
+    @messages_hubs {
+        host api.volleyspike.app staging-api.volleyspike.app
+        path /messages/hubs/*
+    }
+    handle @messages_hubs {
         uri strip_prefix /messages
         reverse_proxy messages-service:5180 {
             flush_interval -1
@@ -60,7 +96,11 @@
             }
         }
     }
-    handle /notifications/hubs/* {
+    @notifications_hubs {
+        host api.volleyspike.app staging-api.volleyspike.app
+        path /notifications/hubs/*
+    }
+    handle @notifications_hubs {
         uri strip_prefix /notifications
         reverse_proxy notifications-service:5030 {
             flush_interval -1
@@ -70,7 +110,11 @@
             }
         }
     }
-    handle /profiles/hubs/* {
+    @profiles_hubs {
+        host api.volleyspike.app staging-api.volleyspike.app
+        path /profiles/hubs/*
+    }
+    handle @profiles_hubs {
         uri strip_prefix /profiles
         reverse_proxy profiles-service:5170 {
             flush_interval -1
@@ -80,7 +124,11 @@
             }
         }
     }
-    handle /social/hubs/* {
+    @social_hubs {
+        host api.volleyspike.app staging-api.volleyspike.app
+        path /social/hubs/*
+    }
+    handle @social_hubs {
         uri strip_prefix /social
         reverse_proxy social-service:5040 {
             flush_interval -1
@@ -90,7 +138,11 @@
             }
         }
     }
-    handle /payments/hubs/* {
+    @payments_hubs {
+        host api.volleyspike.app staging-api.volleyspike.app
+        path /payments/hubs/*
+    }
+    handle @payments_hubs {
         uri strip_prefix /payments
         reverse_proxy payments-service:5050 {
             flush_interval -1
@@ -100,7 +152,11 @@
             }
         }
     }
-    handle /coaching/hubs/evaluation* {
+    @coaching_hubs {
+        host api.volleyspike.app staging-api.volleyspike.app
+        path /coaching/hubs/evaluation*
+    }
+    handle @coaching_hubs {
         uri strip_prefix /coaching
         reverse_proxy coaching-service:5060 {
             flush_interval -1
@@ -120,58 +176,47 @@
     # Case-insensitive: ASP.NET routes are, so /auth/v1/Admin/ reaches the same endpoint
     # and a case-sensitive rule would be walked straight around. Placed above the service
     # routes because `handle` blocks are mutually exclusive and matched in file order.
-    @admin_endpoints path_regexp (?i)^/(auth|clubs)/v[0-9]+/admin/
+    @admin_endpoints path_regexp (?i)^/(auth|clubs|events|rewards)/v[0-9]+/admin/
     handle @admin_endpoints {
         respond 403
     }
 
-    # REST API routes
-    handle_path /auth/* {
-        reverse_proxy auth-service:5005
-    }
-    handle_path /events/* {
-        reverse_proxy events-service:5010
-    }
-    handle_path /clubs/* {
-        reverse_proxy clubs-service:5020
-    }
-    handle_path /profiles/* {
-        reverse_proxy profiles-service:5170
-    }
-    handle_path /messages/* {
-        reverse_proxy messages-service:5180
-    }
-    handle_path /notifications/* {
-        reverse_proxy notifications-service:5030
-    }
-    handle_path /social/* {
-        reverse_proxy social-service:5040
-    }
-    handle_path /coaching/* {
-        reverse_proxy coaching-service:5060
-    }
-    handle_path /payments/* {
-        reverse_proxy payments-service:5050
-    }
-}
-
-:80 {
-    log {
-        output file /var/log/caddy/access-api.log {
-            roll_size 50MiB
-            roll_keep 5
+    # REST API routes (API host only)
+    handle @api_host {
+        handle_path /auth/* {
+            reverse_proxy auth-service:5005
         }
-        format json
+        handle_path /events/* {
+            reverse_proxy events-service:5010
+        }
+        handle_path /clubs/* {
+            reverse_proxy clubs-service:5020
+        }
+        handle_path /profiles/* {
+            reverse_proxy profiles-service:5170
+        }
+        handle_path /messages/* {
+            reverse_proxy messages-service:5180
+        }
+        handle_path /notifications/* {
+            reverse_proxy notifications-service:5030
+        }
+        handle_path /social/* {
+            reverse_proxy social-service:5040
+        }
+        handle_path /coaching/* {
+            reverse_proxy coaching-service:5060
+        }
+        handle_path /payments/* {
+            reverse_proxy payments-service:5050
+        }
+        handle_path /rewards/* {
+            reverse_proxy rewards-service:5070
+        }
+        respond "Not Found" 404
     }
 
-    # TODO: Rate limiting for /auth/* endpoints.
-    # Caddy's rate_limit module is not included in the standard binary and requires a custom build.
-    # As an interim measure, use Cloudflare rate limiting rules for authentication endpoints.
-    # When a custom Caddy build is feasible, add rate_limit directives here for /auth/* routes.
-
-    import api_routes
-
-    # Default: route to frontend container
+    # Default: everything else → Next.js frontend
     handle {
         reverse_proxy frontend:3000
     }
@@ -182,25 +227,12 @@
 }
 
 # Internal API site — the frontend's own server-side reads (INTERNAL_API_URL=http://caddy:8081).
-# Plain HTTP on a port compose does not publish, so only containers on volleyer-network reach it;
-# the same reads through the public API host left the box, crossed Cloudflare and came back. The
-# same routes as the public site, so an SSR read is routed, headed and denied exactly as the
-# browser's would be. No compression: it would cost CPU at both ends of a hop that never leaves
-# the host.
+# Plain HTTP on a port compose does not publish, so only containers on the compose network reach
+# it. The same reads through staging-api.volleyspike.app left the box, crossed Cloudflare and came
+# back (staging traces: p50 317 ms, p99 9.6 s for 10-50 ms of API work). It hands each request to
+# the :80 site above as the API host, so the API's routes stay defined in one place.
 http://:8081 {
-    # Its own file, so the public API log stays a record of outside clients and the frontend's
-    # reads can be timed on their own.
-    log {
-        output file /var/log/caddy/access-internal.log {
-            roll_size 50MiB
-            roll_keep 5
-        }
-        format json
-    }
-
-    import api_routes
-
-    handle {
-        respond 404
+    reverse_proxy localhost:80 {
+        header_up Host staging-api.volleyspike.app
     }
 }
