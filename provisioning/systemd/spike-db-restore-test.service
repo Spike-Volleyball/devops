@@ -1,0 +1,13 @@
+[Unit]
+Description=Restore the newest production backup into a throwaway Postgres and verify it (provisioning/BACKUPS.md)
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/spike-backup.sh restore-test
+RuntimeDirectory=spike-db-restore-test
+RuntimeDirectoryMode=0700
+Nice=10
+IOSchedulingClass=idle
+TimeoutStartSec=30min

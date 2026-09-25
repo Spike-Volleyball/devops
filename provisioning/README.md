@@ -141,3 +141,10 @@ Its four bind addresses (`--web.listen-address` on the three exporters,
 the same reason: this file previously hardcoded `10.10.0.2` and crash-looped
 on any host that isn't the origin server (`bind: cannot assign requested
 address`).
+
+## Backups
+
+Production databases are backed up hourly to S3 and restore-tested daily by
+`scripts/spike-backup.sh` and the `systemd/spike-db-*` units. Install steps
+and the restore runbook are in [BACKUPS.md](BACKUPS.md). A rebuilt box has no
+backups until they are installed again.

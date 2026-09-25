@@ -1,0 +1,15 @@
+[Unit]
+Description=Back up the production databases to S3 (provisioning/BACKUPS.md)
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/spike-backup.sh backup
+RuntimeDirectory=spike-db-backup
+RuntimeDirectoryMode=0700
+StateDirectory=spike-backup
+StateDirectoryMode=0700
+Nice=10
+IOSchedulingClass=idle
+TimeoutStartSec=30min
