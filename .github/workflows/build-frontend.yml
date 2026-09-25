@@ -143,6 +143,9 @@ jobs:
           tags: |
             ghcr.io/${{ env.OWNER_LC }}/volleyer-frontend:${{ github.sha }}
             ghcr.io/${{ env.OWNER_LC }}/volleyer-frontend:${{ github.ref_name }}
+          # NEXT_PUBLIC_SENTRY_RELEASE: in a called workflow github.sha is the caller's commit, the
+          # frontend's. Events, sessions and the source maps uploaded during the build are all filed
+          # under it. (Comments stay out of the block below: every line in it is passed as a build arg.)
           build-args: |
             NEXT_PUBLIC_API_URL=${{ vars.NEXT_PUBLIC_API_URL }}
             NEXT_PUBLIC_WEBSOCKET_URL=${{ vars.NEXT_PUBLIC_WEBSOCKET_URL }}
@@ -152,6 +155,8 @@ jobs:
             NEXT_PUBLIC_S3_HOSTNAME=${{ vars.NEXT_PUBLIC_S3_HOSTNAME }}
             NEXT_PUBLIC_SENTRY_DSN=${{ vars.NEXT_PUBLIC_SENTRY_DSN }}
             NEXT_PUBLIC_SENTRY_ENVIRONMENT=${{ inputs.environment }}
+            NEXT_PUBLIC_SENTRY_RELEASE=${{ github.sha }}
+            NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE=${{ vars.NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE }}
             NEXT_PUBLIC_TURNSTILE_SITE_KEY=${{ vars.NEXT_PUBLIC_TURNSTILE_SITE_KEY }}
             NEXT_PUBLIC_POSTHOG_KEY=${{ vars.NEXT_PUBLIC_POSTHOG_KEY }}
             NEXT_PUBLIC_POSTHOG_HOST=${{ vars.NEXT_PUBLIC_POSTHOG_HOST }}
