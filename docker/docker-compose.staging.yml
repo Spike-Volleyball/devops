@@ -313,6 +313,9 @@ services:
     environment:
       OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4318"
       OTEL_EXPORTER_OTLP_PROTOCOL: "http/protobuf"
+      # The Next server's own API reads go over the compose network to Caddy's internal site
+      # (caddy/Caddyfile.staging, :8081), never out through Cloudflare and back.
+      INTERNAL_API_URL: "http://caddy:8081"
     deploy:
       resources:
         limits:

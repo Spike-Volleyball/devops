@@ -21,28 +21,11 @@
     }
 }
 
-# API domain — routes to backend microservices
-staging-api.volleyspike.app:80 {
-    import common_headers
-
+# The API's routing, shared by the public API site and the internal one below it: the SignalR
+# hubs, the admin-console deny and the per-service routes.
+(api_routes) {
     request_body {
         max_size 10MB
-    }
-
-    # OpenTelemetry: browser trace export -> OTel Collector
-    @otel_allowed {
-        method POST OPTIONS
-        path /otel/*
-    }
-    handle @otel_allowed {
-        request_body {
-            max_size 256KB
-        }
-        uri strip_prefix /otel
-        reverse_proxy otel-collector:4318
-    }
-    handle /otel/* {
-        respond 405
     }
 
     # SignalR WebSocket hubs
@@ -159,6 +142,12 @@ staging-api.volleyspike.app:80 {
     handle_path /payments/* {
         reverse_proxy payments-service:5050
     }
+}
+
+# API domain — routes to backend microservices
+staging-api.volleyspike.app:80 {
+    import common_headers
+    import api_routes
 
     # Fallback: 404 for unknown API routes
     handle {
@@ -170,28 +159,37 @@ staging-api.volleyspike.app:80 {
     }
 }
 
+# Internal API site — the frontend's own server-side reads (INTERNAL_API_URL=http://caddy:8081).
+# Plain HTTP on a port compose does not publish, so only containers on volleyer-network reach it;
+# the same reads through staging-api.volleyspike.app left the box, crossed Cloudflare and came
+# back. The same routes as the public site, so an SSR read is routed, headed and denied exactly as
+# the browser's would be. No compression: it would cost CPU at both ends of a hop that never
+# leaves the host.
+http://:8081 {
+    import common_headers
+
+    # Its own file, so the frontend's reads can be timed on their own.
+    log {
+        output file /var/log/caddy/access-internal.log {
+            roll_size 50MiB
+            roll_keep 5
+        }
+        format json
+    }
+
+    import api_routes
+
+    handle {
+        respond "Not Found" 404
+    }
+}
+
 # Frontend domain — routes to Next.js
 staging.volleyspike.app:80 staging-app.volleyspike.app:80 {
     import common_headers
 
     request_body {
         max_size 10MB
-    }
-
-    # OpenTelemetry: browser trace export -> OTel Collector
-    @otel_allowed {
-        method POST OPTIONS
-        path /otel/*
-    }
-    handle @otel_allowed {
-        request_body {
-            max_size 256KB
-        }
-        uri strip_prefix /otel
-        reverse_proxy otel-collector:4318
-    }
-    handle /otel/* {
-        respond 405
     }
 
     # Everything else -> Next.js frontend
