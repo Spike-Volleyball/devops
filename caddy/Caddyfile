@@ -183,6 +183,9 @@
     handle_path /payments/* {
         reverse_proxy payments-service:5050
     }
+    handle_path /rewards/* {
+        reverse_proxy rewards-service:5070
+    }
 
     # Default: route to frontend container
     handle {

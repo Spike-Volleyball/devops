@@ -205,9 +205,9 @@ fi
 if [ "${SKIP_SECRET_GENERATION:-0}" = "1" ]; then
   echo "SKIP_SECRET_GENERATION=1 — leaving existing $DEPLOY_PATH/.env.<service> files in place."
 else
-  SERVICES=(auth events clubs profiles messages notifications social coaching payments)
-  PORTS=(5005 5010 5020 5170 5180 5030 5040 5060 5050)
-  DB_NAMES=(auth events clubs profiles messages notifications social coaching payments)
+  SERVICES=(auth events clubs profiles messages notifications social coaching payments rewards)
+  PORTS=(5005 5010 5020 5170 5180 5030 5040 5060 5050 5070)
+  DB_NAMES=(auth events clubs profiles messages notifications social coaching payments rewards)
   # Services with dual Kestrel endpoints (HTTP + gRPC) — do NOT set ASPNETCORE_URLS
   GRPC_SERVICES="events clubs coaching payments"
 
@@ -261,6 +261,14 @@ EOF
   cat >> "$DEPLOY_PATH/.env.payments" << 'EOF'
 GrpcClients__ClubsService=http://clubs-service:5021
 GrpcClients__ProfilesService=http://profiles-service:5171
+EOF
+
+  cat >> "$DEPLOY_PATH/.env.rewards" << 'EOF'
+Services__ProfilesService__GrpcUrl=http://profiles-service:5171
+EOF
+
+  cat >> "$DEPLOY_PATH/.env.rewards" << EOF
+Rewards__ThumbBaseUrl=${FRONTEND_URL}/rewards/thumbs
 EOF
 
   # Service-specific URLs

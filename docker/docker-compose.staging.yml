@@ -266,6 +266,24 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  rewards-service:
+    restart: unless-stopped
+    env_file: [.env.common, .env.rewards]
+    ports:
+      - "10.10.0.3:15070:15070"
+    environment:
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 384M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   payments-service:
     restart: unless-stopped
     env_file: [.env.common, .env.payments]
