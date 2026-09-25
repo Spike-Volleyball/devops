@@ -14,7 +14,9 @@
     }
 }
 
-:80 {
+# The API's routing, shared by the public site and the internal one below it: security headers,
+# the canonical client IP, the SignalR hubs, the admin-console deny and the per-service routes.
+(api_routes) {
     request_body {
         max_size 10MB
     }
@@ -31,38 +33,6 @@
     # Canonical client IP for the services' per-IP rate limiters. {client_ip} is
     # trusted-proxy-aware and this overwrites anything a client tries to smuggle in.
     request_header X-Real-Client-Ip {client_ip}
-
-    log {
-        output file /var/log/caddy/access-api.log {
-            roll_size 50MiB
-            roll_keep 5
-        }
-        format json
-    }
-
-    # TODO: Rate limiting for /auth/* endpoints.
-    # Caddy's rate_limit module is not included in the standard binary and requires a custom build.
-    # As an interim measure, use Cloudflare rate limiting rules for authentication endpoints.
-    # When a custom Caddy build is feasible, add rate_limit directives here for /auth/* routes.
-
-    # OpenTelemetry: browser trace export -> OTel Collector
-    # Note: browser telemetry is inherently untrusted. Rate limiting and payload
-    # size restrictions mitigate abuse but cannot prevent crafted fake traces.
-    @otel_allowed {
-        method POST OPTIONS
-        path /otel/*
-    }
-    handle @otel_allowed {
-        request_body {
-            max_size 256KB
-        }
-        uri strip_prefix /otel
-        reverse_proxy otel-collector:4318
-    }
-    # Reject other methods (GET, PUT, etc.) to /otel
-    handle /otel/* {
-        respond 405
-    }
 
     # SignalR WebSocket hubs (more specific paths, matched before generic service routes)
     # Using `handle` + `uri strip_prefix` instead of `handle_path` to strip only the
@@ -183,6 +153,23 @@
     handle_path /payments/* {
         reverse_proxy payments-service:5050
     }
+}
+
+:80 {
+    log {
+        output file /var/log/caddy/access-api.log {
+            roll_size 50MiB
+            roll_keep 5
+        }
+        format json
+    }
+
+    # TODO: Rate limiting for /auth/* endpoints.
+    # Caddy's rate_limit module is not included in the standard binary and requires a custom build.
+    # As an interim measure, use Cloudflare rate limiting rules for authentication endpoints.
+    # When a custom Caddy build is feasible, add rate_limit directives here for /auth/* routes.
+
+    import api_routes
 
     # Default: route to frontend container
     handle {
@@ -191,5 +178,29 @@
 
     encode zstd gzip {
         minimum_length 256
+    }
+}
+
+# Internal API site — the frontend's own server-side reads (INTERNAL_API_URL=http://caddy:8081).
+# Plain HTTP on a port compose does not publish, so only containers on volleyer-network reach it;
+# the same reads through the public API host left the box, crossed Cloudflare and came back. The
+# same routes as the public site, so an SSR read is routed, headed and denied exactly as the
+# browser's would be. No compression: it would cost CPU at both ends of a hop that never leaves
+# the host.
+http://:8081 {
+    # Its own file, so the public API log stays a record of outside clients and the frontend's
+    # reads can be timed on their own.
+    log {
+        output file /var/log/caddy/access-internal.log {
+            roll_size 50MiB
+            roll_keep 5
+        }
+        format json
+    }
+
+    import api_routes
+
+    handle {
+        respond 404
     }
 }
