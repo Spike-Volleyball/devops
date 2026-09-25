@@ -191,6 +191,8 @@ services:
             # dev-api from that origin is cross-origin — without this the request is blocked
             # and the page fails in a way that looks like a broken endpoint.
             - Cors__AllowedOrigins__2=https://dev.volleyspike.app
+            # Local only, as for clubs: the admin console's republish of fact history for rewards.
+            - AdminConsole__ApiKey=${ADMIN_CONSOLE_API_KEY:-local-dev-only-not-a-secret}
         ports:
             - "5010:5010" # HTTP
             - "5011:5011" # gRPC
@@ -522,6 +524,8 @@ services:
             # dev-api from that origin is cross-origin — without this the request is blocked
             # and the page fails in a way that looks like a broken endpoint.
             - Cors__AllowedOrigins__2=https://dev.volleyspike.app
+            # Local only, as for clubs: the admin console's republish of fact history for rewards.
+            - AdminConsole__ApiKey=${ADMIN_CONSOLE_API_KEY:-local-dev-only-not-a-secret}
         ports:
             - "5040:5040" # HTTP
             - "10007:10007" # Debugger
@@ -583,6 +587,8 @@ services:
             # dev-api from that origin is cross-origin — without this the request is blocked
             # and the page fails in a way that looks like a broken endpoint.
             - Cors__AllowedOrigins__2=https://dev.volleyspike.app
+            # Local only, as for clubs: the admin console's republish of fact history for rewards.
+            - AdminConsole__ApiKey=${ADMIN_CONSOLE_API_KEY:-local-dev-only-not-a-secret}
         ports:
             - "5070:5070" # HTTP
             - "10010:10010" # Debugger
@@ -647,6 +653,8 @@ services:
             # dev-api from that origin is cross-origin — without this the request is blocked
             # and the page fails in a way that looks like a broken endpoint.
             - Cors__AllowedOrigins__2=https://dev.volleyspike.app
+            # Local only, as for clubs: the admin console's republish of fact history for rewards.
+            - AdminConsole__ApiKey=${ADMIN_CONSOLE_API_KEY:-local-dev-only-not-a-secret}
         ports:
             - "5060:5060" # HTTP
             - "5061:5061" # gRPC
