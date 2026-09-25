@@ -126,7 +126,7 @@ staging-api.volleyspike.app:80 {
     # Case-insensitive: ASP.NET routes are, so /auth/v1/Admin/ reaches the same endpoint
     # and a case-sensitive rule would be walked straight around. Placed above the service
     # routes because `handle` blocks are mutually exclusive and matched in file order.
-    @admin_endpoints path_regexp (?i)^/(auth|clubs|events)/v[0-9]+/admin/
+    @admin_endpoints path_regexp (?i)^/(auth|clubs|events|rewards)/v[0-9]+/admin/
     handle @admin_endpoints {
         respond 403
     }
