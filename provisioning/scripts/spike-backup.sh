@@ -59,8 +59,10 @@ dump_row_counts() {
 }
 
 # node-exporter's textfile collector only reads *.prom, so the temp name is never half-read.
+# It runs as nobody, and this script's umask would leave the file unreadable to it.
 write_metrics() {
   cat > "$TEXTFILE_DIR/.$1.tmp"
+  chmod 644 "$TEXTFILE_DIR/.$1.tmp"
   mv "$TEXTFILE_DIR/.$1.tmp" "$TEXTFILE_DIR/$1"
 }
 
