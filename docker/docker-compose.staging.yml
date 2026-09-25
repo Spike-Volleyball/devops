@@ -72,6 +72,10 @@ services:
 
   redis:
     restart: unless-stopped
+    # The Redis exporter runs on the host network and reads localhost:6379, as on production;
+    # without the loopback publish it has reported redis_up = 0 since this container was recreated.
+    ports:
+      - "127.0.0.1:6379:6379"
     env_file: .env.common
     healthcheck:
       test: ["CMD-SHELL", "REDISCLI_AUTH=$$REDIS_PASSWORD redis-cli ping"]

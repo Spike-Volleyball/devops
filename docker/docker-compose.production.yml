@@ -19,7 +19,10 @@ services:
       resources:
         limits:
           cpus: '0.5'
-          memory: 128M
+          # The cgroup is charged with the page cache of Caddy's own access logs: at 128M it sat at
+          # memory.max (hit 22,348 times 08-17 → 09-24, 25 MiB anonymous + 79 MiB file), so every
+          # allocation on the request path of every API and web request went through reclaim.
+          memory: 256M
 
   postgres:
     restart: unless-stopped
