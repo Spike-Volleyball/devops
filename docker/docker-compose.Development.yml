@@ -597,6 +597,8 @@ services:
             - ASPNETCORE_ENVIRONMENT=Development
             - ASPNETCORE_URLS=http://+:5070
             - DOTNET_RUNNING_IN_CONTAINER=true
+            - DOTNET_USE_POLLING_FILE_WATCHER=false
+            - MSBUILDDISABLENODEREUSE=1
             # The web app is also served from the Cloudflare tunnel, and a browser calling
             # dev-api from that origin is cross-origin — without this the request is blocked
             # and the page fails in a way that looks like a broken endpoint.
