@@ -240,6 +240,24 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  rewards-service:
+    restart: unless-stopped
+    ports:
+      - "${WG_BIND_IP:-10.10.0.2}:15070:15070"
+    env_file: [.env.common, .env.rewards]
+    environment:
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 768M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   payments-service:
     restart: unless-stopped
     ports:

@@ -195,6 +195,8 @@ services:
             # dev-api from that origin is cross-origin — without this the request is blocked
             # and the page fails in a way that looks like a broken endpoint.
             - Cors__AllowedOrigins__2=https://dev.volleyspike.app
+            # Local only, as for clubs: the admin console's republish of fact history for rewards.
+            - AdminConsole__ApiKey=${ADMIN_CONSOLE_API_KEY:-local-dev-only-not-a-secret}
         ports:
             - "5010:5010" # HTTP
             - "5011:5011" # gRPC
@@ -536,6 +538,8 @@ services:
             # dev-api from that origin is cross-origin — without this the request is blocked
             # and the page fails in a way that looks like a broken endpoint.
             - Cors__AllowedOrigins__2=https://dev.volleyspike.app
+            # Local only, as for clubs: the admin console's republish of fact history for rewards.
+            - AdminConsole__ApiKey=${ADMIN_CONSOLE_API_KEY:-local-dev-only-not-a-secret}
         ports:
             - "5040:5040" # HTTP
             - "10007:10007" # Debugger
@@ -553,6 +557,69 @@ services:
             - /app/Social.Tests.Unit/obj
             - /app/Social.Tests.Integration/bin
             - /app/Social.Tests.Integration/obj
+            - /app/shared/Shared/bin
+            - /app/shared/Shared/obj
+            - /app/shared/Shared.Contracts/bin
+            - /app/shared/Shared.Contracts/obj
+            - /app/shared/Shared.DataAccess/bin
+            - /app/shared/Shared.DataAccess/obj
+            - /app/shared/Shared.Logging/bin
+            - /app/shared/Shared.Logging/obj
+            - /app/shared/Shared.Messaging/bin
+            - /app/shared/Shared.Messaging/obj
+            - /app/shared/Shared.Messaging.Contracts/bin
+            - /app/shared/Shared.Messaging.Contracts/obj
+            - /app/shared/Shared.Microservices/bin
+            - /app/shared/Shared.Microservices/obj
+            - /app/shared/Shared.Services/bin
+            - /app/shared/Shared.Services/obj
+            - /app/shared/Shared.Guardian/bin
+            - /app/shared/Shared.Guardian/obj
+            - /app/shared/Shared.Testing/bin
+            - /app/shared/Shared.Testing/obj
+        networks:
+            - volleyer_network
+        restart: unless-stopped
+        depends_on:
+            postgres:
+                condition: service_healthy
+            rabbitmq:
+                condition: service_healthy
+            redis:
+                condition: service_healthy
+
+    rewards-service:
+        build:
+            context: ../../microservices/rewards-service
+            dockerfile: Dockerfile.dev
+        container_name: volleyer-rewards-dev
+        environment:
+            - ASPNETCORE_ENVIRONMENT=Development
+            - ASPNETCORE_URLS=http://+:5070
+            - DOTNET_RUNNING_IN_CONTAINER=true
+            # The web app is also served from the Cloudflare tunnel, and a browser calling
+            # dev-api from that origin is cross-origin — without this the request is blocked
+            # and the page fails in a way that looks like a broken endpoint.
+            - Cors__AllowedOrigins__2=https://dev.volleyspike.app
+            # Local only, as for clubs: the admin console's republish of fact history for rewards.
+            - AdminConsole__ApiKey=${ADMIN_CONSOLE_API_KEY:-local-dev-only-not-a-secret}
+        ports:
+            - "5070:5070" # HTTP
+            - "10010:10010" # Debugger
+        volumes:
+            - ../../microservices/rewards-service:/app
+            - /app/Rewards/bin
+            - /app/Rewards/obj
+            - /app/Rewards.Application/bin
+            - /app/Rewards.Application/obj
+            - /app/Rewards.Domain/bin
+            - /app/Rewards.Domain/obj
+            - /app/Rewards.Infrastructure/bin
+            - /app/Rewards.Infrastructure/obj
+            - /app/Rewards.Tests.Unit/bin
+            - /app/Rewards.Tests.Unit/obj
+            - /app/Rewards.Tests.Integration/bin
+            - /app/Rewards.Tests.Integration/obj
             - /app/shared/Shared/bin
             - /app/shared/Shared/obj
             - /app/shared/Shared.Contracts/bin
@@ -602,6 +669,8 @@ services:
             # dev-api from that origin is cross-origin — without this the request is blocked
             # and the page fails in a way that looks like a broken endpoint.
             - Cors__AllowedOrigins__2=https://dev.volleyspike.app
+            # Local only, as for clubs: the admin console's republish of fact history for rewards.
+            - AdminConsole__ApiKey=${ADMIN_CONSOLE_API_KEY:-local-dev-only-not-a-secret}
         ports:
             - "5060:5060" # HTTP
             - "5061:5061" # gRPC
@@ -753,6 +822,7 @@ services:
             - social-service
             - payments-service
             - coaching-service
+            - rewards-service
 
 volumes:
     postgres_data:

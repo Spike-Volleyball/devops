@@ -134,7 +134,7 @@
     # Case-insensitive: ASP.NET routes are, so /auth/v1/Admin/ reaches the same endpoint
     # and a case-sensitive rule would be walked straight around. Placed above the service
     # routes because `handle` blocks are mutually exclusive and matched in file order.
-    @admin_endpoints path_regexp (?i)^/(auth|clubs)/v[0-9]+/admin/
+    @admin_endpoints path_regexp (?i)^/(auth|clubs|events|rewards|coaching|social)/v[0-9]+/admin/
     handle @admin_endpoints {
         respond 403
     }
@@ -166,6 +166,9 @@
     }
     handle_path /payments/* {
         reverse_proxy payments-service:5050
+    }
+    handle_path /rewards/* {
+        reverse_proxy rewards-service:5070
     }
 }
 
