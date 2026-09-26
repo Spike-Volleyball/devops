@@ -120,6 +120,8 @@ services:
             - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-us-east-1}
             - AWS_REGION=${AWS_REGION:-us-east-1}
             - DOTNET_RUNNING_IN_CONTAINER=true
+            - DOTNET_USE_POLLING_FILE_WATCHER=false
+            - MSBUILDDISABLENODEREUSE=1
             - EmailSettings__SmtpTransportEnabled=true
             - EmailSettings__SmtpHost=volleyer-mailpit
             - EmailSettings__SmtpPort=1025
@@ -187,6 +189,8 @@ services:
             - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-us-east-1}
             - AWS_REGION=${AWS_REGION:-us-east-1}
             - DOTNET_RUNNING_IN_CONTAINER=true
+            - DOTNET_USE_POLLING_FILE_WATCHER=false
+            - MSBUILDDISABLENODEREUSE=1
             # The web app is also served from the Cloudflare tunnel, and a browser calling
             # dev-api from that origin is cross-origin — without this the request is blocked
             # and the page fails in a way that looks like a broken endpoint.
@@ -249,6 +253,8 @@ services:
             - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-us-east-1}
             - AWS_REGION=${AWS_REGION:-us-east-1}
             - DOTNET_RUNNING_IN_CONTAINER=true
+            - DOTNET_USE_POLLING_FILE_WATCHER=false
+            - MSBUILDDISABLENODEREUSE=1
             # The web app is also served from the Cloudflare tunnel, and a browser calling
             # dev-api from that origin is cross-origin — without this the request is blocked
             # and the page fails in a way that looks like a broken endpoint.
@@ -312,6 +318,8 @@ services:
             - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-us-east-1}
             - AWS_REGION=${AWS_REGION:-us-east-1}
             - DOTNET_RUNNING_IN_CONTAINER=true
+            - DOTNET_USE_POLLING_FILE_WATCHER=false
+            - MSBUILDDISABLENODEREUSE=1
             # The web app is also served from the Cloudflare tunnel, and a browser calling
             # dev-api from that origin is cross-origin — without this the request is blocked
             # and the page fails in a way that looks like a broken endpoint.
@@ -381,6 +389,8 @@ services:
             - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-us-east-1}
             - AWS_REGION=${AWS_REGION:-us-east-1}
             - DOTNET_RUNNING_IN_CONTAINER=true
+            - DOTNET_USE_POLLING_FILE_WATCHER=false
+            - MSBUILDDISABLENODEREUSE=1
             # The web app is also served from the Cloudflare tunnel, and a browser calling
             # dev-api from that origin is cross-origin — without this the request is blocked
             # and the page fails in a way that looks like a broken endpoint.
@@ -444,6 +454,8 @@ services:
             - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-us-east-1}
             - AWS_REGION=${AWS_REGION:-us-east-1}
             - DOTNET_RUNNING_IN_CONTAINER=true
+            - DOTNET_USE_POLLING_FILE_WATCHER=false
+            - MSBUILDDISABLENODEREUSE=1
             - EmailSettings__SmtpTransportEnabled=true
             - EmailSettings__SmtpHost=volleyer-mailpit
             - EmailSettings__SmtpPort=1025
@@ -518,6 +530,8 @@ services:
             - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-us-east-1}
             - AWS_REGION=${AWS_REGION:-us-east-1}
             - DOTNET_RUNNING_IN_CONTAINER=true
+            - DOTNET_USE_POLLING_FILE_WATCHER=false
+            - MSBUILDDISABLENODEREUSE=1
             # The web app is also served from the Cloudflare tunnel, and a browser calling
             # dev-api from that origin is cross-origin — without this the request is blocked
             # and the page fails in a way that looks like a broken endpoint.
@@ -582,6 +596,8 @@ services:
             - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-us-east-1}
             - AWS_REGION=${AWS_REGION:-us-east-1}
             - DOTNET_RUNNING_IN_CONTAINER=true
+            - DOTNET_USE_POLLING_FILE_WATCHER=false
+            - MSBUILDDISABLENODEREUSE=1
             # The web app is also served from the Cloudflare tunnel, and a browser calling
             # dev-api from that origin is cross-origin — without this the request is blocked
             # and the page fails in a way that looks like a broken endpoint.
@@ -645,6 +661,8 @@ services:
             - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-us-east-1}
             - AWS_REGION=${AWS_REGION:-us-east-1}
             - DOTNET_RUNNING_IN_CONTAINER=true
+            - DOTNET_USE_POLLING_FILE_WATCHER=false
+            - MSBUILDDISABLENODEREUSE=1
             # The web app is also served from the Cloudflare tunnel, and a browser calling
             # dev-api from that origin is cross-origin — without this the request is blocked
             # and the page fails in a way that looks like a broken endpoint.
