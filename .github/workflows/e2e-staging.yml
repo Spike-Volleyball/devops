@@ -67,7 +67,7 @@ jobs:
       - name: Health check staging services
         run: |
           echo "Checking staging services health..."
-          SERVICES=("auth" "events" "clubs" "profiles" "messages" "notifications" "social" "coaching" "payments")
+          SERVICES=("auth" "events" "clubs" "profiles" "messages" "notifications" "social" "coaching" "payments" "rewards")
           FAILED=0
           for SVC in "${SERVICES[@]}"; do
             STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://staging-api.volleyspike.app/$SVC/health" || echo "000")

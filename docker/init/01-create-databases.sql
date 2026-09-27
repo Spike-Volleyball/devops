@@ -11,6 +11,7 @@ CREATE DATABASE notifications;
 CREATE DATABASE social;
 CREATE DATABASE payments;
 CREATE DATABASE coaching;
+CREATE DATABASE rewards;
 
 -- Grant all privileges to volleyer_user on all databases
 GRANT ALL PRIVILEGES ON DATABASE auth TO volleyer_user;
@@ -22,3 +23,4 @@ GRANT ALL PRIVILEGES ON DATABASE notifications TO volleyer_user;
 GRANT ALL PRIVILEGES ON DATABASE social TO volleyer_user;
 GRANT ALL PRIVILEGES ON DATABASE payments TO volleyer_user;
 GRANT ALL PRIVILEGES ON DATABASE coaching TO volleyer_user;
+GRANT ALL PRIVILEGES ON DATABASE rewards TO volleyer_user;

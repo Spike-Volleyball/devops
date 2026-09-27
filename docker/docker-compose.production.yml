@@ -19,7 +19,10 @@ services:
       resources:
         limits:
           cpus: '0.5'
-          memory: 128M
+          # The cgroup is charged with the page cache of Caddy's own access logs: at 128M it sat at
+          # memory.max (hit 22,348 times 08-17 → 09-24, 25 MiB anonymous + 79 MiB file), so every
+          # allocation on the request path of every API and web request went through reclaim.
+          memory: 256M
 
   postgres:
     restart: unless-stopped
@@ -237,6 +240,24 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  rewards-service:
+    restart: unless-stopped
+    ports:
+      - "${WG_BIND_IP:-10.10.0.2}:15070:15070"
+    env_file: [.env.common, .env.rewards]
+    environment:
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 768M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   payments-service:
     restart: unless-stopped
     ports:
@@ -285,10 +306,22 @@ services:
     ports:
       - "127.0.0.1:3000:3000"
     environment:
-      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4317"
+      # @vercel/otel exports OTLP over HTTP (protobuf), which the collector takes on 4318. On 4317,
+      # its gRPC port, every Next.js server span was lost.
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://otel-collector:4318"
+      OTEL_EXPORTER_OTLP_PROTOCOL: "http/protobuf"
+      # The Next server's own API reads go over the compose network to Caddy's internal site
+      # (caddy/Caddyfile.production, :8081), never out through Cloudflare and back. Overrides the
+      # public address .env.frontend still carries.
+      INTERNAL_API_URL: "http://caddy:8081"
       # The image pins V8 at 300M for the old 512M cap; 512M under a 1G cap leaves ~350M for
       # native memory and page cache (the old cap was hit 1,683 times, evicting code pages).
       NODE_OPTIONS: "--max-old-space-size=512"
+    volumes:
+      # The image optimiser's cache outlives a deploy, which used to empty it. The image has to
+      # create .next/cache as the server's user (the frontend's Dockerfile) before this volume first
+      # mounts: a fresh volume takes that directory's owner, and without it comes up root-owned.
+      - frontend_cache:/app/.next/cache
     deploy:
       resources:
         limits:
@@ -340,3 +373,4 @@ volumes:
   caddy_data:
   caddy_config:
   caddy_logs:
+  frontend_cache:

@@ -1,0 +1,9 @@
+[Unit]
+Description=Daily restore test of the newest production backup
+
+[Timer]
+OnCalendar=*-*-* 04:35:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

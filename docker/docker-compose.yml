@@ -124,6 +124,16 @@ services:
       rabbitmq:
         condition: service_healthy
 
+  rewards-service:
+    image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-bielov-team-track}/volleyer-rewards-service:${REWARDS_SERVICE_TAG:-main}
+    networks:
+      - volleyer-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
   payments-service:
     image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-bielov-team-track}/volleyer-payments-service:${PAYMENTS_SERVICE_TAG:-main}
     networks:
