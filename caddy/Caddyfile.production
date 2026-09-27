@@ -183,7 +183,14 @@ api.volleyspike.app {
             roll_size 50MiB
             roll_keep 5
         }
-        format json
+        # The web server proves its renders with X-Spike-Renderer, the exemption from the
+        # per-visitor limit on public reads; a secret has no business in an access log.
+        format filter {
+            wrap json
+            fields {
+                request>headers>X-Spike-Renderer delete
+            }
+        }
     }
 
     # TODO: Rate limiting for /auth/* endpoints.
@@ -218,7 +225,14 @@ http://:8081 {
             roll_size 50MiB
             roll_keep 5
         }
-        format json
+        # The web server proves its renders with X-Spike-Renderer, the exemption from the
+        # per-visitor limit on public reads; a secret has no business in an access log.
+        format filter {
+            wrap json
+            fields {
+                request>headers>X-Spike-Renderer delete
+            }
+        }
     }
 
     import api_routes
