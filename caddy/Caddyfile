@@ -40,11 +40,13 @@
         -Server
     }
 
-    # A club's registration form and its sessions card may be framed by the websites the club
-    # approved. The web sends those pages' frame-ancestors itself, per request, so the gateway's
-    # blanket DENY stays off them.
-    @not_club_embed not path_regexp ^/embed/clubs/[^/]+/(register|sessions)$
-    header @not_club_embed X-Frame-Options DENY
+    # Pages the web lets be framed: a club's registration form and its sessions card, by the
+    # websites the club approved, and the club page preview, by the page editor (SAMEORIGIN). The
+    # web sends those pages' framing headers itself, and a second X-Frame-Options from here turns
+    # either into a refusal, so the gateway's blanket DENY stays off them. The same paths as the
+    # web's own DENY rule in next.config.mjs.
+    @not_web_framed not path_regexp ^/(embed/clubs/[^/]+/(register|sessions)|clubs/[^/]+/page-preview)/?$
+    header @not_web_framed X-Frame-Options DENY
 
     # Canonical client IP for the services' per-IP rate limiters. {client_ip} is
     # trusted-proxy-aware and this overwrites anything a client tries to smuggle in.
