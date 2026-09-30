@@ -185,10 +185,15 @@ api.volleyspike.app {
         }
         # The web server proves its renders with X-Spike-Renderer, the exemption from the
         # per-visitor limit on public reads; a secret has no business in an access log.
+        # SignalR's WebSocket upgrade can't carry an Authorization header, so clients put the
+        # JWT in the query string — the logged uri would otherwise hold a live bearer token.
         format filter {
             wrap json
             fields {
                 request>headers>X-Spike-Renderer delete
+                request>uri query {
+                    replace access_token REDACTED
+                }
             }
         }
     }
